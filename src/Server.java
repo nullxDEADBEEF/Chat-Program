@@ -1,26 +1,31 @@
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
+import java.util.Vector;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
-// NOTE: Must use threads
-// NOTE: Must accept more than 1 client to join the chat system
+// TODO: assign a thread when a client connects
+// TODO: broadcast written messages to all connected clients
+// TODO: figure out how to do it with the given threadpool
+// TODO: check for username max 12 characters etc
+// TODO: check for existing username
+// TODO: check for heartbeat for each client
+// TODO: send correct messages to/from the server
 
 public class Server {
     private static ServerSocket serverSocket;
-    private static final int PORT = 1337;
+    private static final int PORT = 4200;
     private static final int MAX_THREADS = 5;
     private static final int MAX_CLIENTS = 5;
     private static ThreadPoolExecutor threadPoolExecutor;
-    private static ArrayList<String> activeUsers;
+    private static Vector<Socket> activeUsers;
 
     public static void main( String[] args ) {
         System.out.println( "Opening port: " + PORT );
 
         threadPoolExecutor = (ThreadPoolExecutor) Executors.newFixedThreadPool( MAX_THREADS );
-        activeUsers = new ArrayList<>();
+        activeUsers = new Vector<>();
 
         try {
             serverSocket = new ServerSocket( PORT );
@@ -31,32 +36,25 @@ public class Server {
         }
 
         while ( !serverSocket.isClosed() ) {
-            serveClient();
+            handleClientMessages();
         }
 
         threadPoolExecutor.shutdown();
     }
 
     /*
-    handle messages from the client
+    handle messages from the client and print them out
      */
-    private static void serveClient() {
-        // create a socket to establish connection
-        Socket clientConnection = null;
-
+    private static void handleClientMessages() {
         // listen for a connection to be made to the server socket
-        try {
-            clientConnection = serverSocket.accept();
-
-
-        } catch ( IOException e ) {
-            e.printStackTrace();
-        } finally {
+        while ( true ) {
             try {
-                System.out.println( "Closing..." );
-                clientConnection.close();
+                // create a socket to establish connection
+                Socket clientConnection = serverSocket.accept();
+                Runnable r = new ServerThread( clientConnection );
+                threadPoolExecutor.execute( r );
             } catch ( IOException e ) {
-                System.out.println( "Could not disconnect!" );
+                System.out.println( "Could not accept");
                 e.printStackTrace();
                 System.exit( 1 );
             }
