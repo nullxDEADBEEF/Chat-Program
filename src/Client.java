@@ -12,16 +12,34 @@ public class Client implements Runnable {
     private static InetAddress host;
     private static final int PORT =  4200;
     private static String username;
-    private static Socket connection;
 
     public Client() {}
 
-    public Client( Socket socket ) {
-        connection = socket;
+    public static void main( String[] args ) {
+        System.out.println( "To join the chat do: JOIN <<username>>" );
+        Scanner inputScanner = new Scanner( System.in );
+
+        String joinCommand = inputScanner.nextLine();
+        while ( !joinCommand.startsWith( "JOIN" ) ) {
+            System.out.println( "Unrecognized command, to join the chat do: JOIN <<username>>" );
+            joinCommand = inputScanner.nextLine();
+        }
+        username = joinCommand.substring( 5 );
+
+        try {
+            host = InetAddress.getLocalHost();
+        } catch ( UnknownHostException e ) {
+            System.out.println( "Unable to find ID of host!" );
+            e.printStackTrace();
+            System.exit( 1 );
+        }
+
+        Client client = new Client();
+        client.run();
     }
 
     public void run() {
-        connection = null;
+        Socket connection = null;
 
         try {
             connection = new Socket( host, PORT );
@@ -32,16 +50,17 @@ public class Client implements Runnable {
             PrintWriter clientOutput = new PrintWriter( connection.getOutputStream(), true );
 
             String userText = "";
-            String response;
-            while ( !userText.equals( "QUIT" ) ) {
-                System.out.print( "Enter message: " );
-                userText = userInput.nextLine();
-                clientOutput.println( userText );
-                response = serverResponse.nextLine();
-                System.out.println( "\n" + getUsername() + " - " + response );
+            String response = serverResponse.nextLine();
+            if ( response.equals( "J_OK" ) ) {
+                System.out.println( response );
+                while (!userText.equals("QUIT")) {
+                    System.out.print("Enter message: ");
+                    userText = userInput.nextLine();
+                    clientOutput.println(userText);
+                    response = serverResponse.nextLine();
+                    System.out.println("\n" + getUsername() + " - " + response);
+                }
             }
-
-
         } catch ( IOException e ) {
             System.out.println( "Could not connect!" );
             e.printStackTrace();
@@ -55,23 +74,6 @@ public class Client implements Runnable {
                 System.exit( 1 );
             }
         }
-    }
-
-    public static void main( String[] args ) {
-        System.out.println( "To join the chat do: JOIN <<username>>" );
-        Scanner inputScanner = new Scanner( System.in );
-        username = inputScanner.nextLine();
-
-        try {
-            host = InetAddress.getLocalHost();
-        } catch ( UnknownHostException e ) {
-            System.out.println( "Unable to find ID of host!" );
-            e.printStackTrace();
-            System.exit( 1 );
-        }
-
-        Client client = new Client();
-        client.run();
     }
 
     public String getUsername() {
