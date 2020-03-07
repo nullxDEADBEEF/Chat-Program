@@ -1,5 +1,4 @@
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Vector;
@@ -13,6 +12,10 @@ import java.util.concurrent.ThreadPoolExecutor;
 // TODO: check for heartbeat for each client
 // TODO: send correct messages to/from the server
 
+/*
+Takes care of all incoming messages/connections from clients
+and prints appropriate responses
+ */
 public class Server {
     private static ServerSocket serverSocket;
     private static final int PORT = 4200;
@@ -20,6 +23,8 @@ public class Server {
     private static ThreadPoolExecutor threadPoolExecutor;
     // we use a vector since they are thread-safe
     private static Vector<Socket> activeUsers;
+
+    private static final String ACCEPT_CLIENT = "J_OK";
 
     public static void main( String[] args ) {
         System.out.println( "Opening port: " + PORT );
@@ -44,22 +49,30 @@ public class Server {
 
     /*
     handle messages from the client and print them out
+    while also printing the appropriate protocol responses to the client
      */
     private static void handleClientMessages() {
-        PrintWriter serverOutput;
-
         // listen for a connection to be made to the server socket
         while ( true ) {
             try {
                 // create a socket to establish connection
                 Socket clientConnection = serverSocket.accept();
-                serverOutput = new PrintWriter( clientConnection.getOutputStream(), true );
-                if ( clientConnection.isConnected() ) {
-                    serverOutput.println( "J_OK" );
+                BufferedReader clientInput = new BufferedReader( new InputStreamReader( clientConnection.getInputStream() ) );
+                PrintWriter serverOutput = new PrintWriter( clientConnection.getOutputStream(), true );
+                String clientJoinText = clientInput.readLine();
+                while ( true ) {
+                    if ( clientJoinText.equals( "JOIN" ) ) {
+                        serverOutput.println( ACCEPT_CLIENT );
+                        break;
+                    }
+
+                    serverOutput.println( "Unknown" );
+                    clientJoinText = clientInput.readLine();
                 }
-                Runnable r = new ServerThread( clientConnection );
+
+                Runnable serverThread = new ServerThread( clientConnection );
                 activeUsers.add( clientConnection );
-                threadPoolExecutor.execute( r );
+                threadPoolExecutor.execute( serverThread );
             } catch ( IOException e ) {
                 System.out.println( "Could not accept" );
                 e.printStackTrace();

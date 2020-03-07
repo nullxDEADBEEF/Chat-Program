@@ -1,8 +1,13 @@
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Scanner;
 
+/*
+Takes care of broadcasting a client message to all other clients
+ */
 public class ServerThread implements Runnable {
     protected Socket socket;
 
@@ -10,16 +15,18 @@ public class ServerThread implements Runnable {
         this.socket = socket;
     }
 
+    /*
+    When a server thread is started, this will run and get client input and print them out to other clients
+     */
     public void run() {
         try {
-            Scanner clientInput = new Scanner( socket.getInputStream() );
+            BufferedReader clientInput = new BufferedReader( new InputStreamReader( socket.getInputStream() ) );
             PrintWriter serverOutput = new PrintWriter( socket.getOutputStream(), true );
 
-            String clientMessage = clientInput.nextLine();
-
+            String clientMessage = clientInput.readLine();
             while ( !clientMessage.equals( "QUIT" ) ) {
                 serverOutput.println( clientMessage );
-                clientMessage = clientInput.nextLine();
+                clientMessage = clientInput.readLine();
             }
         } catch ( IOException e ) {
             e.printStackTrace();
