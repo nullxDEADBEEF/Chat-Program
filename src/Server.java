@@ -6,7 +6,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 // TODO: broadcast written messages to all connected clients
-// TODO: figure out how to do it with the given threadpool
 // TODO: check for username max 12 characters etc
 // TODO: check for existing username
 // TODO: check for heartbeat for each client
@@ -57,26 +56,41 @@ public class Server {
             try {
                 // create a socket to establish connection
                 Socket clientConnection = serverSocket.accept();
-                BufferedReader clientInput = new BufferedReader( new InputStreamReader( clientConnection.getInputStream() ) );
-                PrintWriter serverOutput = new PrintWriter( clientConnection.getOutputStream(), true );
-                String clientJoinText = clientInput.readLine();
+                DataInputStream clientInput = new DataInputStream( clientConnection.getInputStream() );
+                DataOutputStream serverOutput = new DataOutputStream( clientConnection.getOutputStream() );
+
+                String clientJoinText = clientInput.readUTF();
                 while ( true ) {
-                    if ( clientJoinText.equals( "JOIN" ) ) {
-                        serverOutput.println( ACCEPT_CLIENT );
+                    if ( clientJoinText.startsWith( "JOIN" ) ) {
+                        serverOutput.writeUTF( ACCEPT_CLIENT );
+                        serverOutput.flush();
                         break;
                     }
 
-                    serverOutput.println( "Unknown" );
-                    clientJoinText = clientInput.readLine();
+                    serverOutput.writeUTF( "J_ER 1: Unknown command" );
+                    serverOutput.flush();
+                    clientJoinText = clientInput.readUTF();
                 }
-
-                Runnable serverThread = new ServerThread( clientConnection );
+                // we keep a collection of socket output streams to be able to
+                // write to all clients
                 activeUsers.add( clientConnection );
+                Runnable serverThread = new ServerThread( clientConnection );
                 threadPoolExecutor.execute( serverThread );
             } catch ( IOException e ) {
                 System.out.println( "Could not accept" );
                 e.printStackTrace();
                 System.exit( 1 );
+            }
+        }
+    }
+
+    public static void broadcastMessage( String message ) {
+        for ( Socket s : activeUsers ) {
+            try {
+                DataOutputStream outputStream = new DataOutputStream( s.getOutputStream() );
+                outputStream.writeUTF( "> " + message );
+            } catch ( IOException e ) {
+                e.printStackTrace();
             }
         }
     }
